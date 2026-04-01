@@ -5,33 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Money Manager</title>
 
+<!-- ✅ FAVICON -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
+
 <link rel="manifest" href="manifest.json">
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body {
-    margin:0;
-    font-family: 'Segoe UI';
-    background:#0f172a;
-    color:white;
-}
-
-.container {
-    max-width:1100px;
-    margin:auto;
-    padding:15px;
-}
-
+body { margin:0; font-family:'Segoe UI'; background:#0f172a; color:white; }
+.container { max-width:1100px; margin:auto; padding:15px; }
 h2 { text-align:center; }
 
-/* FORM */
-.form-row {
-    display:flex;
-    flex-wrap:wrap;
-    gap:10px;
-    margin-top:10px;
-}
+.form-row { display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; }
 
 input, select {
     padding:10px;
@@ -51,7 +37,6 @@ button {
     cursor:pointer;
 }
 
-/* SUMMARY */
 .summary {
     display:grid;
     grid-template-columns: repeat(3,1fr);
@@ -66,7 +51,6 @@ button {
     text-align:center;
 }
 
-/* GRID */
 .main-grid {
     display:grid;
     grid-template-columns:2fr 1fr;
@@ -74,11 +58,7 @@ button {
     margin-top:20px;
 }
 
-/* TABLE */
-table {
-    width:100%;
-    border-collapse:collapse;
-}
+table { width:100%; border-collapse:collapse; }
 
 th, td {
     padding:10px;
@@ -86,18 +66,14 @@ th, td {
     text-align:center;
 }
 
-td button {
-    background:#ef4444;
-}
+td button { background:#ef4444; }
 
-/* CHART */
 .chart-box {
     background:#1e293b;
     padding:15px;
     border-radius:10px;
 }
 
-/* MOBILE */
 @media(max-width:768px){
     .summary { grid-template-columns:1fr; }
     .main-grid { grid-template-columns:1fr; }
@@ -111,13 +87,13 @@ td button {
 
 <h2>💰 Money Manager</h2>
 
-<!-- ADD CATEGORY -->
+<!-- CATEGORY -->
 <div class="form-row">
-<input type="text" id="newCategory" placeholder="Add New Category">
+<input type="text" id="newCategory" placeholder="Add Category">
 <button onclick="addCategory()">Add Category</button>
 </div>
 
-<!-- MAIN FORM -->
+<!-- FORM -->
 <div class="form-row">
 <input type="date" id="date">
 <input type="text" id="desc" placeholder="Description">
@@ -143,7 +119,6 @@ td button {
 <!-- GRID -->
 <div class="main-grid">
 
-<!-- TABLE -->
 <div>
 <table>
 <thead>
@@ -161,7 +136,6 @@ td button {
 </table>
 </div>
 
-<!-- CHART -->
 <div class="chart-box">
 <canvas id="chart"></canvas>
 </div>
@@ -171,8 +145,12 @@ td button {
 </div>
 
 <script>
-let data = JSON.parse(localStorage.getItem("data")) || [];
-let categories = JSON.parse(localStorage.getItem("categories")) || ["Food","Travel","Bills"];
+document.addEventListener("DOMContentLoaded", function(){
+
+// ✅ SAFE LOAD (prevents data loss)
+let data = JSON.parse(localStorage.getItem("data") || "[]");
+let categories = JSON.parse(localStorage.getItem("categories") || '["Food","Travel","Bills"]');
+
 let chart;
 
 // default date
@@ -188,15 +166,12 @@ function loadCategories(){
 }
 
 // add category
-function addCategory(){
+window.addCategory = function(){
     let newCat = document.getElementById("newCategory").value.trim();
 
     if(!newCat) return alert("Enter category");
 
-    if(categories.includes(newCat)){
-        alert("Category already exists");
-        return;
-    }
+    if(categories.includes(newCat)) return alert("Already exists");
 
     categories.push(newCat);
     localStorage.setItem("categories", JSON.stringify(categories));
@@ -206,7 +181,7 @@ function addCategory(){
 }
 
 // add transaction
-function addTransaction(){
+window.addTransaction = function(){
     let t = {
         date:date.value,
         time:new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
@@ -219,6 +194,8 @@ function addTransaction(){
     if(!t.desc || !t.amount) return alert("Fill all fields");
 
     data.push(t);
+
+    // ✅ FORCE SAVE
     localStorage.setItem("data", JSON.stringify(data));
 
     show();
@@ -228,7 +205,7 @@ function addTransaction(){
 }
 
 // delete
-function deleteItem(i){
+window.deleteItem = function(i){
     data.splice(i,1);
     localStorage.setItem("data", JSON.stringify(data));
     show();
@@ -284,21 +261,20 @@ function drawChart(){
             datasets:[{data:Object.values(cat)}]
         },
         options:{
-            plugins:{
-                legend:{ position:'bottom' }
-            }
+            plugins:{ legend:{ position:'bottom' } }
         }
     });
 }
 
-// init
 loadCategories();
 show();
 
-// PWA
+// ✅ SERVICE WORKER REGISTER
 if('serviceWorker' in navigator){
     navigator.serviceWorker.register('service-worker.js');
 }
+
+});
 </script>
 
 </body>
