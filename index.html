@@ -15,7 +15,6 @@ body { margin:0; font-family:'Segoe UI'; background:#0f172a; color:white; }
 
 h2 { text-align:center; }
 
-/* FORM */
 .form-row {
     display:flex;
     flex-wrap:wrap;
@@ -41,7 +40,6 @@ button {
     cursor:pointer;
 }
 
-/* SUMMARY */
 .summary {
     display:grid;
     grid-template-columns: repeat(3,1fr);
@@ -56,7 +54,6 @@ button {
     text-align:center;
 }
 
-/* GRID */
 .main-grid {
     display:grid;
     grid-template-columns:2fr 1fr;
@@ -64,7 +61,6 @@ button {
     margin-top:20px;
 }
 
-/* TABLE */
 table { width:100%; border-collapse:collapse; }
 
 th, td {
@@ -75,7 +71,6 @@ th, td {
 
 td button { background:#ef4444; }
 
-/* CHART */
 .chart-box {
     background:#1e293b;
     padding:15px;
@@ -127,7 +122,6 @@ td button { background:#ef4444; }
 <!-- GRID -->
 <div class="main-grid">
 
-<!-- TABLE -->
 <div>
 <table>
 <thead>
@@ -145,7 +139,6 @@ td button { background:#ef4444; }
 </table>
 </div>
 
-<!-- CHART -->
 <div class="chart-box">
 <canvas id="chart"></canvas>
 </div>
@@ -159,7 +152,7 @@ td button { background:#ef4444; }
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// CONFIG
+// 🔥 YOUR CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyBCVoY823nRlgk3aKS5TuOfjr-QCiH3x_k",
   authDomain: "moneymanager-abcff.firebaseapp.com",
@@ -176,10 +169,10 @@ let data = [];
 let categories = [];
 let chart;
 
-// SET TODAY
+// DEFAULT DATE
 document.getElementById("date").value = new Date().toISOString().split('T')[0];
 
-// LOAD CATEGORIES
+// LOAD CATEGORY DROPDOWN
 function loadCategories(){
     let select = document.getElementById("category");
     select.innerHTML="";
@@ -188,20 +181,33 @@ function loadCategories(){
     });
 }
 
-// ADD CATEGORY (CLOUD)
+// ADD CATEGORY
 window.addCategory = async function(){
-    let val = newCategory.value.trim();
+    let val = document.getElementById("newCategory").value.trim();
+
     if(!val) return alert("Enter category");
 
     await setDoc(doc(db, "categories", val), { name: val });
+
+    document.getElementById("newCategory").value="";
 }
 
-// LISTEN CATEGORIES
-onSnapshot(collection(db,"categories"), snapshot=>{
+// LISTEN CATEGORY
+onSnapshot(collection(db,"categories"), async snapshot=>{
     categories = [];
+
     snapshot.forEach(doc=>{
         categories.push(doc.data().name);
     });
+
+    // AUTO CREATE DEFAULT
+    if(categories.length === 0){
+        await setDoc(doc(db, "categories", "Food"), { name: "Food" });
+        await setDoc(doc(db, "categories", "Travel"), { name: "Travel" });
+        await setDoc(doc(db, "categories", "Bills"), { name: "Bills" });
+        return;
+    }
+
     loadCategories();
 });
 
@@ -221,14 +227,14 @@ window.addTransaction = async function(){
 
     desc.value="";
     amount.value="";
-};
+}
 
 // DELETE
 window.deleteItem = async function(id){
     await deleteDoc(doc(db, "transactions", id));
-};
+}
 
-// REAL-TIME DATA
+// LIVE DATA
 const q = query(collection(db,"transactions"), orderBy("timestamp","desc"));
 
 onSnapshot(q, snapshot=>{
@@ -260,19 +266,13 @@ function render(){
         </tr>`;
     });
 
-    list.innerHTML = html;
-    incomeEl.innerText = income;
-    expenseEl.innerText = expense;
-    balanceEl.innerText = income - expense;
+    document.getElementById("list").innerHTML = html;
+    document.getElementById("income").innerText = income;
+    document.getElementById("expense").innerText = expense;
+    document.getElementById("balance").innerText = income - expense;
 
     drawChart();
 }
-
-// FIX IDs
-const list = document.getElementById("list");
-const incomeEl = document.getElementById("income");
-const expenseEl = document.getElementById("expense");
-const balanceEl = document.getElementById("balance");
 
 // CHART
 function drawChart(){
