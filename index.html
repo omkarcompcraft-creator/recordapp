@@ -1,3 +1,11 @@
+Here is the complete, fully functional single-file code.
+
+### Key Features Added:
+
+1. **Month-by-Month Navigation**: Added **"Previous Month"** and **"Next Month"** controls to easily filter your transactions by month and year. It defaults to the current month on load.
+2. **Category Filter Buttons**: Dynamically displays filtering buttons right above the main list and chart for quick analysis. Clicking a category instantly filters both the visual doughnut chart and the history log.
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -38,6 +46,49 @@ button {
     background:#22c55e;
     color:white;
     cursor:pointer;
+}
+
+/* Month Navigation styling */
+.month-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #1e293b;
+    padding: 10px 20px;
+    border-radius: 10px;
+    margin-top: 15px;
+}
+.month-nav button {
+    background: #3b82f6;
+}
+
+/* Category Filter Chips styling */
+.filter-container {
+    margin-top: 20px;
+    background: #1e293b;
+    padding: 15px;
+    border-radius: 10px;
+}
+.filter-title {
+    font-size: 0.9rem;
+    color: #94a3b8;
+    margin-bottom: 8px;
+}
+.filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.filter-chip {
+    background: #334155;
+    border: 1px solid #475569;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+}
+.filter-chip.active {
+    background: #3b82f6;
+    border-color: #60a5fa;
 }
 
 .summary {
@@ -90,13 +141,11 @@ td button { background:#ef4444; }
 
 <h2>☁️ Money Manager</h2>
 
-<!-- ADD CATEGORY -->
 <div class="form-row">
 <input type="text" id="newCategory" placeholder="Add Category">
 <button onclick="addCategory()">Add Category</button>
 </div>
 
-<!-- FORM -->
 <div class="form-row">
 <input type="date" id="date">
 <input type="text" id="desc" placeholder="Description">
@@ -112,14 +161,23 @@ td button { background:#ef4444; }
 <button onclick="addTransaction()">Add</button>
 </div>
 
-<!-- SUMMARY -->
+<div class="month-nav">
+<button onclick="changeMonth(-1)">◀ Previous Month</button>
+<h3 id="currentMonthDisplay"></h3>
+<button onclick="changeMonth(1)">Next Month ▶</button>
+</div>
+
+<div class="filter-container">
+<div class="filter-title">Filter Analysis by Category:</div>
+<div id="categoryFilters" class="filter-chips"></div>
+</div>
+
 <div class="summary">
 <div class="card">Income ₹<span id="income">0</span></div>
 <div class="card">Expense ₹<span id="expense">0</span></div>
 <div class="card">Balance ₹<span id="balance">0</span></div>
 </div>
 
-<!-- GRID -->
 <div class="main-grid">
 
 <div>
@@ -147,7 +205,6 @@ td button { background:#ef4444; }
 
 </div>
 
-<!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -169,8 +226,44 @@ let data = [];
 let categories = [];
 let chart;
 
+// Track the selected year and month for recording/viewing (Month is 0-indexed: 0 = Jan, 11 = Dec)
+let currentNavDate = new Date();
+let selectedCategoryFilter = "All";
+
 // DEFAULT DATE
 document.getElementById("date").value = new Date().toISOString().split('T')[0];
+
+// Update month display
+function updateMonthDisplay() {
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    document.getElementById("currentMonthDisplay").innerText = `${months[currentNavDate.getMonth()]} ${currentNavDate.getFullYear()}`;
+}
+
+// Navigating between months
+window.changeMonth = function(direction) {
+    currentNavDate.setMonth(currentNavDate.getMonth() + direction);
+    updateMonthDisplay();
+    render(); // Re-render to sort data according to the newly viewed month
+}
+
+// Set up the interactive category analysis buttons
+function renderCategoryFilters() {
+    let container = document.getElementById("categoryFilters");
+    let html = `<button class="filter-chip ${selectedCategoryFilter === 'All' ? 'active' : ''}" onclick="filterByCategory('All')">All Categories</button>`;
+    
+    categories.forEach(c => {
+        html += `<button class="filter-chip ${selectedCategoryFilter === c ? 'active' : ''}" onclick="filterByCategory('${c}')">${c}</button>`;
+    });
+    
+    container.innerHTML = html;
+}
+
+// Set global category filter value
+window.filterByCategory = function(category) {
+    selectedCategoryFilter = category;
+    renderCategoryFilters();
+    render();
+}
 
 // LOAD CATEGORY DROPDOWN
 function loadCategories(){
@@ -209,6 +302,7 @@ onSnapshot(collection(db,"categories"), async snapshot=>{
     }
 
     loadCategories();
+    renderCategoryFilters();
 });
 
 // ADD TRANSACTION
@@ -242,6 +336,7 @@ onSnapshot(q, snapshot=>{
     snapshot.forEach(docSnap=>{
         data.push({ id: docSnap.id, ...docSnap.data() });
     });
+    updateMonthDisplay();
     render();
 });
 
@@ -249,8 +344,26 @@ onSnapshot(q, snapshot=>{
 function render(){
     let html="";
     let income=0, expense=0;
+    
+    // Get currently viewed Target Year and Month strings
+    let targetYear = currentNavDate.getFullYear();
+    let targetMonth = currentNavDate.getMonth(); // 0 - 11
 
-    data.forEach(e=>{
+    // 1. Filter original data array by selected Month/Year AND Category Filter
+    let filteredData = data.filter(e => {
+        if (!e.date) return false;
+        let itemDate = new Date(e.date);
+        
+        // Month match check
+        let matchesMonth = (itemDate.getFullYear() === targetYear && itemDate.getMonth() === targetMonth);
+        // Category selection check
+        let matchesCategory = (selectedCategoryFilter === "All" || e.category === selectedCategoryFilter);
+        
+        return matchesMonth && matchesCategory;
+    });
+
+    // 2. Loop over dynamic results to construct summary tallies and structural rows
+    filteredData.forEach(e=>{
         if(e.type==="income") income+=e.amount;
         else expense+=e.amount;
 
@@ -271,22 +384,28 @@ function render(){
     document.getElementById("expense").innerText = expense;
     document.getElementById("balance").innerText = income - expense;
 
-    drawChart();
+    // Send the correctly filtered sub-list down to chart component logic
+    drawChart(filteredData);
 }
 
 // CHART
-function drawChart(){
+function drawChart(filteredList){
     let ctx=document.getElementById("chart");
 
     if(chart) chart.destroy();
 
     let cat={};
 
-    data.forEach(e=>{
+    filteredList.forEach(e=>{
         if(e.type==="expense"){
             cat[e.category]=(cat[e.category]||0)+e.amount;
         }
     });
+
+    // Handle edge case where no data items exist under current applied category filters 
+    if(Object.keys(cat).length === 0) {
+        cat["No Expense Data Found"] = 0;
+    }
 
     chart = new Chart(ctx,{
         type:'doughnut',
@@ -303,3 +422,5 @@ function drawChart(){
 
 </body>
 </html>
+
+```
